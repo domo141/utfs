@@ -1,0 +1,158 @@
+# -*- Makefile -*-
+#
+# To less warnings, enter 'make <target> WARN1='
+#
+
+CC_NATIVE = gcc
+CC=	gcc
+
+WARN0=	-Wall -Wstrict-prototypes -pedantic -Wno-long-long \
+	-Wcast-align -Wpointer-arith #-Wfloat-equal #-Werror
+WARN1?= -W -Wwrite-strings -Wcast-qual -Wshadow #-Wconversion
+
+WOPTS=	$(WARN0) $(WARN1)
+
+O64= -DLARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+
+OD    ?= /dev/null
+DEBUG ?= 0
+DEP   ?= _depend
+
+UTRGS=utfs-server utfs-client
+TRGS=$(UTRGS) utfs-server.exe
+
+all:  $(UTRGS)
+
+#CF= -O2 -fdump-tree-gimple
+CF= -O2
+LF= -s
+
+__debug: CF= -ggdb -fstack-protector -Wstack-protector
+__debug: LF=
+__debug: $(UTRGS)
+
+OPT= $(O64) $(CF) -DDEBUG=$(DEBUG)
+
+client: utfs-client
+server: utfs-server #utfs-server-launcher
+server.exe: utfs-server.exe
+
+COBJS=pretocol.o util.o simplexdr.o utfs.o
+CSRC=$(COBJS:%.o=%.c)
+
+SRVONLY0=utfs-server.o utfs-server-fs.o
+SRVSRC=$(SRVONLY0:%.o=%.c)
+SRVONLY= $(SRVONLY0) utfs-server-buffer.o utfs-server-errmap.o 
+
+CLIONLY0=utfs-client.o utfs-client-fuse.o utfs-client-errmap.o
+CLISRC=$(CLIONLY0:%.o=%.c)
+CLIONLY= $(CLIONLY0) utfs-client-buffer.o 
+
+SRVOBJS0=$(SRVONLY) $(COBJS)
+SRVOBJS=$(SRVOBJS0:%=$(OD)/%)
+CLIOBJS0=$(CLIONLY) $(COBJS)
+CLIOBJS=$(CLIOBJS0:%=$(OD)/%)
+
+$(CLIONLY:%=$(OD)/%): CF += -std=gnu99
+
+ALLOBJS=$(SRVONLY) $(CLIONLY) $(COBJS)
+
+W32OBJS0= w32x.o
+W32OBJS= $(W32OBJS0:%=$(OD)/%)
+
+
+utfs-server.exe:  CC=i686-pc-mingw32-gcc
+
+utfs-server.exe: $(SRVOBJS) $(W32OBJS)
+	$(CC) $(LF) -o $@ $(SRVOBJS) $(W32OBJS) -lwsock32
+
+utfs-server: $(SRVOBJS)
+	$(CC) $(LF) -o $@ $(SRVOBJS)
+
+#utfs-server-launcher: utfs-server-launcher.c
+#	$(CC) $(LF) -o $@ $(OPT) $(WOPTS) $<
+
+
+utfs-client: $(CLIOBJS)
+	$(CC) $(LF) -o $@ $(CLIOBJS) `pkg-config --libs fuse`
+
+$(SRVOBJS): $(SRVSRC) $(CSRC) utfs-buffer.c $(OD)/utfs-server-errmap.c
+$(CLIOBJS): $(CLISRC) $(CSRC) utfs-buffer.c
+
+
+ODS = $(OD)/stamp
+
+$(ODS):
+	test -d $(OD) || mkdir $(OD)
+	touch $@
+
+utfs-client-fuse.o: utfs-client-fuse.c
+	$(CC) -o $@ -c $< `pkg-config --cflags fuse` $(OPT) $(WOPTS)
+
+$(OD)/%.o: %.c $(ODS) $(DEP)
+	$(CC) -o $@ -c $<  $(OPT) $(WOPTS)
+
+# for utfs-server-errmap.[co]
+$(OD)/%.o: $(OD)/%.c $(ODS) $(DEP)
+	$(CC) -o $@ -c $<  $(OPT) $(WOPTS)
+
+
+$(OD)/utfs-client-buffer.o: utfs-buffer.c $(ODS) $(DEP)
+	$(CC) -o $@ -c $<  $(OPT) $(WOPTS) -DUTFS_CLIENT
+
+$(OD)/utfs-server-buffer.o: utfs-buffer.c $(ODS) $(DEP)
+	$(CC) -o $@ -c $<  $(OPT) $(WOPTS) -DUTFS_SERVER
+
+$(OD)/utfs-server-errmap.c: utfs-client-errmap.c utfs-errmaps.h
+	$(CC) -DEDEFAULT_FOR_PP -E $< | perl output_server_errmap.pl > $@
+
+$(DEP): Makefile.build
+	for i in *.c; do $(CC) -MM $(OPT) $$i; done \
+	  | sed -e '/^[a-z]/ s|^|$(OD)/|' -e \
+		's|buffer.o:|client-buffer.o $(OD)/utfs-server-buffer.o:|' \
+	  > $(DEP)
+
+include $(DEP)
+
+install: $(UTRGS) chkprefix
+	sed -n '/^install.sh:/,/^ *$$/ p' Makefile.build \
+		| tail -n +4 | sh -ves
+
+chkprefix: ALWAYS
+	@[ x"$(PREFIX)" != x ] \
+		|| { sed -n 's/^#prfx: \?/ /p;' Makefile.build; false; }
+
+#prfx:
+#prfx: Can not install: PREFIX missing.
+#prfx:
+#prfx: files to be installed:
+#prfx:
+#prfx:    PREFIX/bin/utfs
+#prfx:    PREFIX/bin/utfs-client
+#prfx:    PREFIX/bin/utfs-server
+#prfx:
+#prfx: Try for example: 'make install PREFIX=/usr' or 'make install PREFIX=/usr/local'
+#prfx: 
+
+install.sh:
+	exit 1 # this target is not to be run
+	:
+	die () { echo "$@" >&2; exit 1; }
+	[ -d "$PREFIX" ] || die Directory "'"$PREFIX"'" does not exist
+	[ -d "$PREFIX/bin" ] || { set -x; mkdir -m 755 -p "$PREFIX/bin"; }
+	cp utfs && cp utfs $PREFIX/bin || true
+	test ! -x utfs-client || cp utfs-client $PREFIX/bin/utfs-client
+	test ! -x utfs-server || cp utfs-server $PREFIX/bin/utfs-server
+
+.PHONY: ALWAYS
+
+.SUFFIXES:
+
+tags:
+	etags *.c *.h
+
+clean:
+	rm -rf utfs-server-errmap.c TAGS _depend* _obj* *~ *.gimple
+
+distclean: clean
+	rm -f $(TRGS)
