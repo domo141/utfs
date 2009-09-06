@@ -54,8 +54,8 @@ _dist:
 		echo $$p root root . $$version/$$f $$d; done; } \
 	| tarlisted -Vz -o $$version.tar.gz
 
-#,#  ChangeLog
-#,#  README.brief
+##,#  ChangeLog
+#,#  README
 #,#  Makefile
 #,#  Makefile.build
 #,#  output_server_errmap.pl
@@ -88,6 +88,7 @@ _dist:
 #,#  devel
 #,#  devel/dbgsetup.sh  x
 #,#  devel/genxtypes.sh  x
+#,#  devel/socketpairpipeline.pl x
 #,#  devel/speedtest-ia32.c
 #,#  devel/utfs-server-dbgwrapper.sh  x
 #,#  devel/testoperations.sh  x
