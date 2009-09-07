@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Thu 07 May 2009 09:10:23 EEST too
- * Last modified: Sat 05 Sep 2009 08:40:40 EEST too
+ * Last modified: Mon 07 Sep 2009 09:26:26 EEST too
  */
 
 
@@ -42,10 +42,8 @@ void init_G(const char * prgname)
 	prgname0++;
     else
 	prgname0 = prgname;
-#if WIN32
-    G_sd = -1;
-#else
     G_fd_in = -1;
+#if !WIN32
     G_fd_out = -1;
 #endif
 
