@@ -140,9 +140,9 @@ install.sh:
 	die () { echo "$@" >&2; exit 1; }
 	[ -d "$PREFIX" ] || die Directory "'"$PREFIX"'" does not exist
 	[ -d "$PREFIX/bin" ] || { set -x; mkdir -m 755 -p "$PREFIX/bin"; }
-	cp utfs && cp utfs $PREFIX/bin || true
-	test ! -x utfs-client || cp utfs-client $PREFIX/bin/utfs-client
-	test ! -x utfs-server || cp utfs-server $PREFIX/bin/utfs-server
+	test ! -x utfs        || cp utfs        "$PREFIX"/bin/utfs
+	test ! -x utfs-client || cp utfs-client "$PREFIX"/bin/utfs-client
+	test ! -x utfs-server || cp utfs-server "$PREFIX"/bin/utfs-server
 
 .PHONY: ALWAYS
 
