@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun 26 Aug 2007 08:18:39 AM EEST too
- * Last modified: Fri 04 Sep 2009 20:08:02 EEST too
+ * Last modified: Tue 08 Sep 2009 22:45:07 EEST too
  */
 
 #include <unistd.h>
@@ -57,6 +57,9 @@ static void init(int * argcp, char *** argvp)
 
     if (mountdir == null)
 	die("Mount directory missing");
+
+    if (chdir(mountdir) < 0)
+	die("chdir('%s')\n", mountdir);
 
     if (doconn < 2)
 	make_connection(host, doconn, detach_after_connection);
