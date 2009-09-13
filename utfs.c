@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Thu 07 May 2009 09:10:23 EEST too
- * Last modified: Sun 13 Sep 2009 17:04:53 EEST too
+ * Last modified: Sun 13 Sep 2009 18:34:31 EEST too
  */
 
 
@@ -87,13 +87,13 @@ void utfs_initial_opts(int * argcp, char *** argvp, void (*usage)(void),
 	    G.verbose = 1;
 	    break;
 	case 'b':
-	case 'u':
-	    *doconnp = 2;
-	    *strp = get_next_arg(argcp, argvp, usage);
-	    break;
-
+	    *doconnp = 0;
+	    /* fall through */
 	case 'c':
-	    *doconnp = 1;
+	    if (*doconnp < 0) *doconnp = 1;
+	    /* fall through */
+	case 'u':
+	    if (*doconnp < 0) *doconnp = 2;
 	    *strp = get_next_arg(argcp, argvp, usage);
 	    break;
 
