@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun 26 Aug 2007 08:14:57 AM EEST too
- * Last modified: Fri 04 Sep 2009 20:07:47 EEST too
+ * Last modified: Sun 13 Sep 2009 21:53:56 EEST too
  */
 
 #include <unistd.h>
@@ -85,6 +85,7 @@ static void init(int * argcp, char *** argvp)
 	make_connection(host, doconn, detach_after_connection);
     else
 	use_fds(host, detach_after_connection);
+    warn("utfs client is ready"); // XXX move deeper
 }
 
 int main(int argc, char ** argv)

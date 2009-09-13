@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun Aug 26 19:08:59 EEST 2007 too
- * Last modified: Fri 04 Sep 2009 19:57:17 EEST too
+ * Last modified: Sun 13 Sep 2009 21:49:28 EEST too
  */
 
 #include <unistd.h>
@@ -19,9 +19,13 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netdb.h>
+#include <errno.h>
 #endif
 
 #include <string.h>
+
+#define UTFS_COMMON 1
+#include "utfs.h" /* for xverbose()... */
 
 #include "sockfd.h"
 
@@ -29,7 +33,7 @@
 
 #include "version.h"
 
-int readwt(sockfd fd, unsigned char * buf, int len, int timeout)
+static void pollread(sockfd fd, int timeout)
 {
 #if WIN32
     fd_set readfds;
@@ -43,7 +47,7 @@ int readwt(sockfd fd, unsigned char * buf, int len, int timeout)
 
     switch (select(1, &readfds, 0, 0, &tval)) {
     case -1:
-	die("%C: poll failed:");
+	die("%C: select failed:");
     case 0:
 	die("%C: timeout");
     }
@@ -60,6 +64,13 @@ int readwt(sockfd fd, unsigned char * buf, int len, int timeout)
 	die("%C: timeout");
     }
 #endif
+}
+
+
+int readwt(sockfd fd, unsigned char * buf, int len, int timeout)
+{
+    int i;
+    pollread(fd, timeout);
     i = sockread(fd, buf, len);
     if (i <= 0)
 	die("%C: eof or read error");
@@ -128,6 +139,7 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
 {
     struct hostent * remote;
     struct sockaddr_in addr;
+    int i;
 
     sockfd sd = tsocket(false, &addr, port);
 
@@ -137,9 +149,19 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
 
     memcpy(&addr.sin_addr, remote->h_addr, sizeof addr.sin_addr);
 
+    xverbose(("%C: connect '%s' (%s)", host, inet_ntoa(addr.sin_addr)));
+#if WIN32
     if (connect(sd, (struct sockaddr *)&addr, sizeof addr) < 0)
-	die("%C: connect failed:");
-
+	    die("%C: connect failed:");
+#else
+    for (i = 0;; sleep(1), i++)
+	if (connect(sd, (struct sockaddr *)&addr, sizeof addr) < 0) {
+	    if (i < 5 && errno == ECONNREFUSED)
+		continue;
+	    die("%C: connect failed:");
+	}
+	else break;
+#endif
     doweaksecretexchange(secrets, sd, sd);
     return sd;
 }
@@ -174,6 +196,7 @@ sockfd doaccept(const unsigned char * secrets, sockfd ssd)
     int one = 1;
 
     memset(&addr, 0, sizeof addr);
+    pollread(ssd, 60 * 1000);
     sd = accept(ssd, (struct sockaddr *)&addr, &addrlen);
 
 #if WIN32
