@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Thu 07 May 2009 09:10:23 EEST too
- * Last modified: Mon 07 Sep 2009 09:26:26 EEST too
+ * Last modified: Sun 13 Sep 2009 17:04:53 EEST too
  */
 
 
@@ -176,13 +176,13 @@ const unsigned char * get_secrets(unsigned char * bufspace)
     if (rsec == null) die("remote \"secret\" missing\n");
 
     hash = sdbm_hash(S2U(lsec, const char, *, *));
-    xverbose(("%C: local hash: %x", hash));
+    xverbose(("%C: local hash: %08x", hash));
     bufspace[0] = hash >> 24;
     bufspace[1] = hash >> 16;
     bufspace[2] = hash >> 8;
     bufspace[3] = hash >> 0;
     hash = sdbm_hash(S2U(rsec, const char, *, *));
-    xverbose(("%C: remote hash: %x", hash));
+    xverbose(("%C: remote hash: %08x", hash));
     bufspace[4] = hash >> 24;
     bufspace[5] = hash >> 16;
     bufspace[6] = hash >> 8;
