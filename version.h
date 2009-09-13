@@ -6,13 +6,13 @@ exit 0
 #endif
 /*
  * Created: Sat Jan 19 16:46:57 EET 2008 too
- * Last modified: Tue 08 Sep 2009 22:47:57 EEST too
+ * Last modified: Sun 13 Sep 2009 18:42:32 EEST too
  */
 
 #ifndef VERSION_H
 #define VERSION_H
 
-#define VERSION "1.942"
+#define VERSION "1.951"
 #define PROTVER 4
 
 #endif /* VERSION_H */
