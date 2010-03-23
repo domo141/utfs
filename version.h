@@ -12,7 +12,7 @@ exit 0
 #ifndef VERSION_H
 #define VERSION_H
 
-#define VERSION "1.952"
+#define VERSION "1.953"
 #define PROTVER 4
 
 #endif /* VERSION_H */

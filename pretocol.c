@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun Aug 26 19:08:59 EEST 2007 too
- * Last modified: Sun 13 Sep 2009 21:49:28 EEST too
+ * Last modified: Tue 23 Mar 2010 09:45:48 EET too
  */
 
 #include <unistd.h>
@@ -166,6 +166,23 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
     return sd;
 }
 
+#if NO_BIND_LISTEN_ACCEPT /* for some virus scanners... :( */
+
+sockfd dobindandlisten(const char * ip, int port, bool fatal)
+{
+    die("%C: listening socket not supported in this version\n");
+}
+inline sockfd doaccept(const unsigned char * secrets, sockfd ssd)
+{
+#if WIN32
+    return INVALID_SOCKET;
+#else
+    return -1;
+#endif
+}
+
+#else /* not NO_BIND_LISTEN_ACCEPT */
+
 sockfd dobindandlisten(const char * ip, int port, bool fatal)
 {
     struct sockaddr_in addr;
@@ -213,6 +230,7 @@ sockfd doaccept(const unsigned char * secrets, sockfd ssd)
     doweaksecretexchange(secrets, sd, sd);
     return sd;
 }
+#endif /* not NO_BIND_LISTEN_ACCEPT */
 
 /*
  * Local variables:
