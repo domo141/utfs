@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun Aug 26 19:08:59 EEST 2007 too
- * Last modified: Tue 23 Mar 2010 09:45:48 EET too
+ * Last modified: Tue 31 Aug 2010 16:38:44 EEST too
  */
 
 #include <unistd.h>
@@ -82,7 +82,7 @@ int readwt(sockfd fd, unsigned char * buf, int len, int timeout)
     return i;
 }
 
-static int tsocket(bool dobind, struct sockaddr_in * addr, int port)
+static int tsocket(bool dobind)
 {
     int one = 1;
     sockfd sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -97,10 +97,6 @@ static int tsocket(bool dobind, struct sockaddr_in * addr, int port)
     setsockopt(sd, SOL_SOCKET,
 	       dobind? SO_REUSEADDR: SO_KEEPALIVE, &one, sizeof one);
     setsockopt(sd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
-
-    memset(addr, 0, sizeof *addr);
-    addr->sin_family = AF_INET;
-    addr->sin_port = htons(port);
 
     return sd;
 }
@@ -139,9 +135,12 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
 {
     struct hostent * remote;
     struct sockaddr_in addr;
+    sockfd sd;
     int i;
 
-    sockfd sd = tsocket(false, &addr, port);
+    memset(&addr, 0, sizeof addr);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
 
     remote = gethostbyname(host);
     if (remote == null)
@@ -150,17 +149,23 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
     memcpy(&addr.sin_addr, remote->h_addr, sizeof addr.sin_addr);
 
     xverbose(("%C: connect '%s' (%s)", host, inet_ntoa(addr.sin_addr)));
+
 #if WIN32
+    sd = tsocket(false);
     if (connect(sd, (struct sockaddr *)&addr, sizeof addr) < 0)
 	    die("%C: connect failed:");
 #else
-    for (i = 0;; sleep(1), i++)
+    for (i = 0;; i++) {
+	sd = tsocket(false);
 	if (connect(sd, (struct sockaddr *)&addr, sizeof addr) < 0) {
-	    if (i < 5 && errno == ECONNREFUSED)
-		continue;
-	    die("%C: connect failed:");
+	    if (i >= 5 || errno != ECONNREFUSED)
+		die("%C: connect failed:");
+	    close(sd);
+	    sleep(1);
+	    continue;
 	}
-	else break;
+	break;
+    }
 #endif
     doweaksecretexchange(secrets, sd, sd);
     return sd;
@@ -186,7 +191,11 @@ inline sockfd doaccept(const unsigned char * secrets, sockfd ssd)
 sockfd dobindandlisten(const char * ip, int port, bool fatal)
 {
     struct sockaddr_in addr;
-    sockfd ssd = tsocket(true, &addr, port);
+    sockfd ssd = tsocket(true);
+
+    memset(&addr, 0, sizeof addr);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
 
     (void)ip; /* XXX fiz */
 
