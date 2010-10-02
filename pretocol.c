@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun Aug 26 19:08:59 EEST 2007 too
- * Last modified: Sat 02 Oct 2010 13:50:36 EEST too
+ * Last modified: Sat 02 Oct 2010 14:03:58 EEST too
  */
 
 #include <unistd.h>
@@ -176,6 +176,7 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
 	}
 	if (doweaksecretexchange(secrets, sd, sd))
 	    break;
+	close(sd);
     }
 #endif
     return sd;
