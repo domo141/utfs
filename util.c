@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun Aug 26 22:59:02 EEST 2007 too
- * Last modified: Fri 04 Sep 2009 19:57:18 EEST too
+ * Last modified: Sat 02 Oct 2010 13:50:22 EEST too
  */
 
 #include <stdio.h>
@@ -34,7 +34,7 @@ void vwarn(const char * format, va_list ap)
 	fprintf(stderr, " %s\n", strerror(error));
     else
 	fputs("\n", stderr);
-//    fflush(stderr);
+    fflush(stderr);
 }
 
 struct DieHookStruct die_hook = { null, null };

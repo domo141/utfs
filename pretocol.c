@@ -7,7 +7,7 @@
  *	    All rights reserved
  *
  * Created: Sun Aug 26 19:08:59 EEST 2007 too
- * Last modified: Tue 31 Aug 2010 16:38:44 EEST too
+ * Last modified: Sat 02 Oct 2010 13:50:36 EEST too
  */
 
 #include <unistd.h>
@@ -66,14 +66,21 @@ static void pollread(sockfd fd, int timeout)
 #endif
 }
 
+/* In case eof (or read error) happens before initial secret read
+ * return 0 (so that in case of connect, retry). pollread() may
+ * still make this to fail (as it should be).
+ */
 
 int readwt(sockfd fd, unsigned char * buf, int len, int timeout)
 {
     int i;
     pollread(fd, timeout);
     i = sockread(fd, buf, len);
-    if (i <= 0)
+    if (i <= 0) {
+#if 0
 	die("%C: eof or read error");
+#else
+	return 0; }
 
 #if 0 /* d1(()) */
     {int j; for (j = 0; j < i; j++) printf("%02x ", buf[j]); puts("");}
@@ -101,7 +108,7 @@ static int tsocket(bool dobind)
     return sd;
 }
 
-void doweaksecretexchange(const unsigned char * secrets,
+int doweaksecretexchange(const unsigned char * secrets,
 			  sockfd sd_in, sockfd sd_out)
 {
     unsigned char * p;
@@ -119,7 +126,8 @@ void doweaksecretexchange(const unsigned char * secrets,
     (void)sockwrite(sd_out, secrets, 4);
 
     for (p = buf, i = sizeof buf; i; p += l, i -= l)
-	l = readwt(sd_in, p, i, 10 * 1000);
+	if ((l = readwt(sd_in, p, i, 10 * 1000)) == 0)
+	    return 0;
 
     if (memcmp(buf, secrets + 4, 4) != 0)
 	die("%C: Secret mismatch");
@@ -128,6 +136,7 @@ void doweaksecretexchange(const unsigned char * secrets,
     readwt(sd_in, buf, 1, 10 * 1000);
     if (buf[0] != 0)
 	die("%C: Peer did not accept our secret -- actually junk in stream");
+    return 1;
 }
 
 /* XXX add timeout handling */
@@ -150,24 +159,25 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
 
     xverbose(("%C: connect '%s' (%s)", host, inet_ntoa(addr.sin_addr)));
 
-#if WIN32
-    sd = tsocket(false);
-    if (connect(sd, (struct sockaddr *)&addr, sizeof addr) < 0)
-	    die("%C: connect failed:");
-#else
     for (i = 0;; i++) {
 	sd = tsocket(false);
 	if (connect(sd, (struct sockaddr *)&addr, sizeof addr) < 0) {
+#if WIN32
+	    if (i >= 5 || WSAGetLastError() != WSAECONNREFUSED)
+		die("%C: connect failed:");
+#define sleep(s) Sleep(s * 1000)
+#else
 	    if (i >= 5 || errno != ECONNREFUSED)
 		die("%C: connect failed:");
+#endif
 	    close(sd);
 	    sleep(1);
 	    continue;
 	}
-	break;
+	if (doweaksecretexchange(secrets, sd, sd))
+	    break;
     }
 #endif
-    doweaksecretexchange(secrets, sd, sd);
     return sd;
 }
 
@@ -175,7 +185,7 @@ sockfd doconnect(const unsigned char * secrets, const char * host, int port)
 
 sockfd dobindandlisten(const char * ip, int port, bool fatal)
 {
-    die("%C: listening socket not supported in this version\n");
+    die("%C: listening socket not supported in this version");
 }
 inline sockfd doaccept(const unsigned char * secrets, sockfd ssd)
 {
@@ -236,8 +246,10 @@ sockfd doaccept(const unsigned char * secrets, sockfd ssd)
     setsockopt(sd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
 
     sockclose(ssd);
-    doweaksecretexchange(secrets, sd, sd);
-    return sd;
+    if (doweaksecretexchange(secrets, sd, sd))
+	return sd;
+    else
+	die("%C: eof or read error");
 }
 #endif /* not NO_BIND_LISTEN_ACCEPT */
 
