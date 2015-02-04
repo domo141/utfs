@@ -1,16 +1,58 @@
 ===================
-User TCP FileSystem
+User Tcp FileSystem
 ===================
 
--------------
-Version 1.955
--------------
+--------------------------
+Version 1.961 (2015-02-04)
+--------------------------
 
+User Tcp FileSystem consists of (FUSE) client and (plain) server component,
+each running on separate computers (usually, that is) and are connected to
+each other via TCP connection. When connected, the clients provides
+mountpoint where server provides file content.
+
+Until utfs(1) -- sshlessfs(1) style cli frontend has been created, the
+client and server component has to be started "manually" on the computers.
+Either one can bind(1) TCP socket where the other one connect(1)s. After
+connection is made there is simple handshake to identify connection before
+system goes to serve files.
+
+Executing ``make`` will provide information how to compile the client and
+server components (on unix-like computers). Additionally a Windows (32bit)
+version of the utfs-server can be compined (IIRC using mingw) -- to provide
+files from windows machine to mountpoint on unix-like systems!
+
+The ``./utfs-client`` and ``./utfs-server`` components, after compiled,
+give brief usage information; this (test) example enlightens those a bit:
+
+  hostA $ mkdir z
+  hostA $ ./utfs-client -l bar -r foo -b :9999  z
+
+  hostB $ ./utfs-server -l foo -r bar -c hostA:9999 .
+
+When connection is made (when no firewall blocking!) hostA outputs
+'utfs client is ready' and hostB 'utfs server is ready' utfs-server
+(in hostB) does not detach by default, utfs-client (in hostA) does
+detach. Now:
+
+   hostA $ df z
+   Filesystem     1K-blocks     Used Available Use% Mounted on
+   utfs-client    114769480 56616500  52299952  52% /path/to/z
+
+and finally
+
+   hostA $ fusermount -u z
+
+releases the mount (utfs-server exits on hostB). Also breaking utfs-server
+will do the umount.
+
+Hint: initial test can be done on the same host using ``127.1`` as hostB
+address.
 
 License
 =======
 
-User TCP FileSystem, Filesystem in USErspace based custom networking fs. 
+User Tcp FileSystem, Filesystem in USErspace based custom networking fs.
 Copyright (C) 2009 Tomi Ollila
 
 This program is free software; you can redistribute it and/or modify
